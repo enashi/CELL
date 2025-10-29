@@ -1,0 +1,61 @@
+# Docker Compose for 5G QoS Testing
+# This is a template - students need to complete the configuration
+
+version: '3.8'
+
+networks:
+  oai-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.70.0/24
+
+services:
+  # MySQL database for 5G Core
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: linux
+      MYSQL_DATABASE: oai_db
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.131
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  # OAI Core Network Functions
+  # Students should add: AMF, SMF, UPF, NRF, UDM, AUSF, UDR
+  # with appropriate QoS configurations
+  
+  # Example SMF configuration (students need to complete)
+  # oai-smf:
+  #   image: oaisoftwarealliance/oai-smf:latest
+  #   container_name: oai-smf
+  #   environment:
+  #     - USE_FQDN_DNS=yes
+  #     - REGISTER_NRF=yes
+  #     - QOS_PROFILE_CONFIG=/openair-smf/etc/qos_profiles.yaml
+  #   volumes:
+  #     - ../config/qos_profiles.yaml:/openair-smf/etc/qos_profiles.yaml
+  #   networks:
+  #     oai-network:
+  #       ipv4_address: 192.168.70.133
+  
+  # UERANSIM gNB
+  # Students should configure multiple UEs with different QoS requirements
+  
+  # iperf3 server for throughput testing
+  iperf-server:
+    image: networkstatic/iperf3
+    container_name: iperf-server
+    command: -s
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.150
+    ports:
+      - "5201:5201"
+
+volumes:
+  mysql-data:
+
