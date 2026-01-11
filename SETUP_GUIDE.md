@@ -1245,19 +1245,6 @@ docker ps
 
 ---
 
-## Prochaines Étapes
-
-Après l'installation complète :
-
-1. ✅ Vérifier tous les services actifs
-2. ✅ Tester connectivité iperf3
-3. ✅ Valider interfaces UE
-4. → **Procéder aux tests QoS** (voir Test Procedure Documentation)
-5. → **Analyser les résultats**
-6. → **Générer le rapport**
-
----
-
 ## Références
 
 - **OpenAirInterface CN5G** : https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed
