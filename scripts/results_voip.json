@@ -1,0 +1,30 @@
+{
+  "test_type": "voip",
+  "test_config": {
+    "target_ip": "10.2.0.7",
+    "duration": 60,
+    "packet_rate": 50
+  },
+  "timestamp": 1768160300.0751832,
+  "timestamp_readable": "2026-01-11 20:38:20",
+  "latency": {
+    "min": 0.016,
+    "max": 0.483,
+    "avg": 0.043,
+    "stddev": 0.064,
+    "loss": 0.0
+  },
+  "jitter": 0.12808165672425184,
+  "thresholds": {
+    "latency": 150,
+    "jitter": 30,
+    "loss": 1.0
+  },
+  "scores": {
+    "latency": 99.97133333333333,
+    "jitter": 99.57306114425249,
+    "loss": 100.0,
+    "overall": 99.8481314925286
+  },
+  "passed": true
+}

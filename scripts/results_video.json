@@ -1,0 +1,29 @@
+{
+  "test_type": "video",
+  "test_config": {
+    "target_ip": "192.168.70.150",
+    "bitrate_target_mbps": 10.0,
+    "quality_profile": "custom",
+    "duration": 120,
+    "method": "iperf3"
+  },
+  "timestamp": 1768160355.991011,
+  "timestamp_readable": "2026-01-11 20:39:15",
+  "results": {
+    "throughput_mbps": 9.999971116705419,
+    "bitrate_target_mbps": 10.0,
+    "throughput_ratio": 0.999997111670542,
+    "packets_sent": 103591,
+    "packets_lost": 64,
+    "loss_percent": 0.06178142888861001,
+    "jitter_ms": 0.15611821705885262,
+    "duration": 120
+  },
+  "threshold": 0.95,
+  "scores": {
+    "throughput": 99.9997111670542,
+    "loss": 99.3821857111139,
+    "overall": 99.69094843908405
+  },
+  "passed": true
+}

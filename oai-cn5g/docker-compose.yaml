@@ -144,7 +144,8 @@ services:
       oai-network:
         ipv4_address: 192.168.70.150
     ports:
-      - "5201:5201"
+      - "5201:5201/tcp"
+      - "5201:5201/udp" 
 
 volumes:
   mysql-data:
