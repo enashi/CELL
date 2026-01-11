@@ -5,26 +5,26 @@
     "duration": 60,
     "packet_rate": 50
   },
-  "timestamp": 1768160300.0751832,
-  "timestamp_readable": "2026-01-11 20:38:20",
+  "timestamp": 1768165317.4806988,
+  "timestamp_readable": "2026-01-11 22:01:57",
   "latency": {
-    "min": 0.016,
-    "max": 0.483,
-    "avg": 0.043,
-    "stddev": 0.064,
-    "loss": 0.0
+    "min": 0,
+    "max": 0,
+    "avg": 0,
+    "stddev": 0,
+    "loss": 100.0
   },
-  "jitter": 0.12808165672425184,
+  "jitter": 0.0,
   "thresholds": {
     "latency": 150,
     "jitter": 30,
     "loss": 1.0
   },
   "scores": {
-    "latency": 99.97133333333333,
-    "jitter": 99.57306114425249,
-    "loss": 100.0,
-    "overall": 99.8481314925286
+    "latency": 100.0,
+    "jitter": 100.0,
+    "loss": 0,
+    "overall": 66.66666666666667
   },
-  "passed": true
+  "passed": false
 }
