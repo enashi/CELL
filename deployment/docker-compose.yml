@@ -1,8 +1,6 @@
 # Docker Compose for 5G QoS Testing
 # This is a template - students need to complete the configuration
 
-version: '3.8'
-
 networks:
   oai-network:
     driver: bridge
@@ -22,8 +20,120 @@ services:
       oai-network:
         ipv4_address: 192.168.70.131
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./database/oai_db.sql:/docker-entrypoint-initdb.d/oai_db.sql
+      - ./healthscripts/mysql-healthcheck.sh:/tmp/mysql-healthcheck.sh
+    healthcheck:
+      test: /bin/bash -c "/tmp/mysql-healthcheck.sh"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+# NRF : L'annuaire où tout le monde s'enregistre
+  oai-nrf:
+    image: oaisoftwarealliance/oai-nrf:v1.5.0
+    container_name: oai-nrf
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.130
+    environment:
+      - NRF_INTERFACE_NAME_FOR_SBI=eth0
 
+  # UDR : Interface vers MySQL
+  oai-udr:
+    image: oaisoftwarealliance/oai-udr:v1.5.0
+    container_name: oai-udr
+    depends_on: [mysql, oai-nrf]
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.136
+    environment:
+      - REGISTER_NRF=yes
+      - NRF_IPV4_ADDRESS=192.168.70.130
+      - MYSQL_SERVER=192.168.70.131
+      - MYSQL_USER=root
+      - MYSQL_PASS=linux
+      - MYSQL_DB=oai_db
+
+  # UDM : Gestion des données abonnés
+  oai-udm:
+    image: oaisoftwarealliance/oai-udm:v1.5.0
+    container_name: oai-udm
+    depends_on: [oai-udr, oai-nrf]
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.137
+    environment:
+      - REGISTER_NRF=yes
+      - NRF_IPV4_ADDRESS=192.168.70.130
+      - UDR_IP_ADDRESS=192.168.70.136
+
+  # AUSF : Authentification (Sécurité)
+  oai-ausf:
+    image: oaisoftwarealliance/oai-ausf:v1.5.0
+    container_name: oai-ausf
+    depends_on: [oai-udm, oai-nrf]
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.138
+    environment:
+      - REGISTER_NRF=yes
+      - NRF_IPV4_ADDRESS=192.168.70.130
+      - UDM_IP_ADDRESS=192.168.70.137
+
+  # AMF : Gestion de l'accès (Le portier)
+  oai-amf:
+    image: oaisoftwarealliance/oai-amf:v1.5.0
+    container_name: oai-amf
+    depends_on: [oai-nrf, oai-ausf]
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.132
+    environment:
+      - MCC=001
+      - MNC=01
+      - REGION_ID=128
+      - AMF_SET_ID=1
+      - SST_0=1
+      - REGISTER_NRF=yes
+      - NRF_IPV4_ADDRESS=192.168.70.130
+      - AUSF_IPV4_ADDRESS=192.168.70.138
+      - UDM_IPV4_ADDRESS=192.168.70.137
+
+  # SMF : Gestion des Sessions et QoS (Le plus important pour ton projet)
+  oai-smf:
+    image: oaisoftwarealliance/oai-smf:v1.5.0
+    container_name: oai-smf
+    depends_on: [oai-nrf, oai-amf]
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.133
+    environment:
+      - REGISTER_NRF=yes
+      - NRF_IPV4_ADDRESS=192.168.70.130
+      - AMF_IPV4_ADDRESS=192.168.70.132
+      - UPF_IPV4_ADDRESS=192.168.70.134
+      - UE_MTU=1500
+    volumes:
+      - ./config/qos_profiles.yaml:/openair-smf/etc/qos_profiles.yaml
+  
+  # UPF : Le transport des données
+  oai-upf:
+    # On utilise l'image spgwu-tiny qui sert de UPF standard dans OAI
+    image: oaisoftwarealliance/oai-spgwu-tiny:v1.5.0
+    container_name: oai-upf
+    depends_on: [oai-smf]
+    cap_add: [NET_ADMIN] # INDISPENSABLE
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.134
+    environment:
+      - REGISTER_NRF=yes
+      - NRF_IPV4_ADDRESS=192.168.70.130
+      - GW_ID=1
+      - MNC=01
+      - MCC=001
+      - REALM=openairinterface.org
+      - NETWORK_UE_NAT_OPTION=yes
   # OAI Core Network Functions
   # Students should add: AMF, SMF, UPF, NRF, UDM, AUSF, UDR
   # with appropriate QoS configurations

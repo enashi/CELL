@@ -1,0 +1,291 @@
+################################################################################
+# Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The OpenAirInterface Software Alliance licenses this file to You under
+# the OAI Public License, Version 1.1  (the "License"); you may not use this file
+# except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.openairinterface.org/?page_id=698
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#-------------------------------------------------------------------------------
+# For more information about the OpenAirInterface (OAI) Software Alliance:
+#      contact@openairinterface.org
+################################################################################
+
+# OAI CN Configuration File
+### This file can be used by all OAI NFs
+### Some fields are specific to an NF and will be ignored by other NFs
+### The {{ env['ENV_NAME'] }} syntax lets you define these values in a docker-compose file
+### If you intend to mount this file or use a bare-metal deployment, please refer to README.md
+### The README.md also defines default values and allowed values for each configuration parameter
+
+############# Common configuration
+
+################################################################################
+# OAI CN Configuration File with QoS Profiles
+################################################################################
+
+# Log level for all the NFs
+log_level:
+  general: debug
+
+# If you enable registration, the other NFs will use the NRF discovery mechanism
+register_nf:
+  general: yes
+  
+http_version: 2
+
+############## SBI Interfaces
+nfs:
+  amf:
+    host: 192.168.70.132
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+    n2:
+      interface_name: eth0
+      port: 38412
+  smf:
+    host: 192.168.70.133
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+    n4:
+      interface_name: eth0
+      port: 8805
+  upf:
+    host: 192.168.70.134
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+    n3:
+      interface_name: eth0
+      port: 2152
+    n4:
+      interface_name: eth0
+      port: 8805
+    n6:
+      interface_name: eth0
+    n9:
+      interface_name: eth0
+      port: 2152
+  udm:
+    host: 192.168.70.137
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+  udr:
+    host: 192.168.70.136
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+  ausf:
+    host: 192.168.70.138
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+  nrf:
+    host: 192.168.70.130
+    sbi:
+      port: 8080
+      api_version: v1
+      interface_name: eth0
+
+#### Common for UDR and AMF
+database:
+  host: mysql
+  user: root
+  type: mysql
+  password: linux
+  database_name: oai_db
+  generate_random: true
+  connection_timeout: 300
+
+## general single_nssai configuration
+snssais:
+  - &embb_slice
+    sst: 1
+
+############## NF-specific configuration
+amf:
+  pid_directory: "/var/run"
+  amf_name: "OAI-AMF"
+  support_features_options:
+    enable_simple_scenario: no
+    enable_nssf: no
+    enable_smf_selection: yes
+    use_external_udm: no
+  relative_capacity: 30
+  statistics_timer_interval: 20
+  emergency_support: false
+  served_guami_list:
+    - mcc: 001
+      mnc: 01
+      amf_region_id: 01
+      amf_set_id: 001
+      amf_pointer: 01
+  plmn_support_list:
+    - mcc: 001
+      mnc: 01
+      tac: 0x0001
+      nssai:
+        - *embb_slice
+  supported_integrity_algorithms:
+    - "NIA1"
+    - "NIA2"
+  supported_encryption_algorithms:
+    - "NEA0"
+    - "NEA1"
+    - "NEA2"
+
+smf:
+  ue_mtu: 1500
+  support_features:
+    use_local_subscription_info: yes
+    use_local_pcc_rules: yes
+  upfs:
+    - host: 192.168.70.134
+      config:
+        enable_usage_reporting: no
+  ue_dns:
+    primary_ipv4: "1.1.1.1"
+    primary_ipv6: "2001:4860:4860::8888"
+    secondary_ipv4: "8.8.8.8"
+    secondary_ipv6: "2001:4860:4860::8888"
+  ims:
+    pcscf_ipv4: "192.168.70.139"
+    pcscf_ipv6: "fe80::7915:f408:1787:db8b"
+  
+  smf_info:
+    sNssaiSmfInfoList:
+      - sNssai: *embb_slice
+        dnnSmfInfoList:
+          - dnn: "voip"       # For VoIP traffic (GBR)
+          - dnn: "video"      # For video streaming
+          - dnn: "web"        # For web browsing
+          - dnn: "default"    # Default/best effort
+  
+  # QoS Profiles adapted from qos_profiles.yaml
+  local_subscription_infos:
+    # VoIP Profile - 5QI 1 (GBR, High Priority)
+    - single_nssai: *embb_slice
+      dnn: "voip"
+      qos_profile:
+        5qi: 1                      # Conversational Voice
+        session_ambr_ul: "200Kbps"  # Slightly higher than GBR for overhead
+        session_ambr_dl: "200Kbps"
+      # Note: GBR values should be configured per flow in policy rules
+      
+    # Video Streaming Profile - 5QI 9 (Non-GBR, Medium Priority)
+    - single_nssai: *embb_slice
+      dnn: "video"
+      qos_profile:
+        5qi: 9                      # Video streaming
+        session_ambr_ul: "5Mbps"    # Upload for interactive video
+        session_ambr_dl: "20Mbps"   # Download for HD video
+        
+    # Web Browsing Profile - 5QI 9 (Non-GBR, Lower Priority)
+    - single_nssai: *embb_slice
+      dnn: "web"
+      qos_profile:
+        5qi: 79                      # Best effort
+        session_ambr_ul: "10Mbps"
+        session_ambr_dl: "50Mbps"
+        
+    # Default/Best Effort - 5QI 9
+    - single_nssai: *embb_slice
+      dnn: "default"
+      qos_profile:
+        5qi: 9
+        session_ambr_ul: "10Mbps"
+        session_ambr_dl: "10Mbps"
+  
+  # Local PCC Rules for QoS enforcement
+  local_pcc_rules:
+    # VoIP QoS Rules
+    - rule_id: 1
+      precedence: 1
+      flow_description: "permit out ip from any to assigned"
+      qos:
+        5qi: 1
+        priority_level: 20
+        arp:
+          priority_level: 1
+          preemption_capability: "NOT_PREEMPT"
+          preemption_vulnerability: "NOT_PREEMPTABLE"
+        # GBR parameters for VoIP
+        gfbr_uplink: "150Kbps"
+        gfbr_downlink: "150Kbps"
+        mfbr_uplink: "150Kbps"
+        mfbr_downlink: "150Kbps"
+        
+    # Video QoS Rules
+    - rule_id: 2
+      precedence: 10
+      flow_description: "permit out ip from any to assigned"
+      qos:
+        5qi: 9
+        priority_level: 80
+        arp:
+          priority_level: 8
+          preemption_capability: "MAY_PREEMPT"
+          preemption_vulnerability: "PREEMPTABLE"
+          
+    # Web/Best Effort QoS Rules  
+    - rule_id: 3
+      precedence: 20
+      flow_description: "permit out ip from any to assigned"
+      qos:
+        5qi: 79
+        priority_level: 90
+        arp:
+          priority_level: 9
+          preemption_capability: "MAY_PREEMPT"
+          preemption_vulnerability: "PREEMPTABLE"
+
+upf:
+  support_features:
+    enable_bpf_datapath: no
+    enable_snat: yes
+  remote_n6_gw: 192.168.70.1
+  smfs:
+    - host: 192.168.70.133
+  upf_info:
+    sNssaiUpfInfoList:
+      - sNssai: *embb_slice
+        dnnUpfInfoList:
+          - dnn: "voip"
+          - dnn: "video"
+          - dnn: "web"
+          - dnn: "default"
+
+## DNN configuration - Define subnets for each service type
+dnns:
+  - dnn: "voip"
+    pdu_session_type: "IPV4"
+    ipv4_subnet: "10.1.0.0/24"     # VoIP UEs get IPs from this range
+    
+  - dnn: "video"
+    pdu_session_type: "IPV4"
+    ipv4_subnet: "10.2.0.0/24"     # Video UEs get IPs from this range
+    
+  - dnn: "web"
+    pdu_session_type: "IPV4"
+    ipv4_subnet: "10.3.0.0/24"     # Web UEs get IPs from this range
+    
+  - dnn: "default"
+    pdu_session_type: "IPV4"
+    ipv4_subnet: "10.0.255.0/24"   # Default/best effort

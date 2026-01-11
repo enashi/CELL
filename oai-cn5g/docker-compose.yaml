@@ -1,0 +1,151 @@
+# Docker Compose for 5G QoS Testing - Adapted for your structure
+# Structure: 5g-qos-testing/oai-cn5g/ (ce fichier) et 5g-qos-testing/UERANSIM/build/
+
+networks:
+  oai-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.70.0/24
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: linux
+      MYSQL_DATABASE: oai_db
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.131
+    volumes:
+      - ./database/oai_db.sql:/docker-entrypoint-initdb.d/oai_db.sql
+      - ./healthscripts/mysql-healthcheck.sh:/tmp/mysql-healthcheck.sh
+    healthcheck:
+      test: /bin/bash -c "/tmp/mysql-healthcheck.sh"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  oai-nrf:
+    image: oaisoftwarealliance/oai-nrf:develop
+    container_name: oai-nrf
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.130
+    environment:
+      - TZ=Europe/Paris
+    volumes:
+      - ./conf/config.yaml:/openair-nrf/etc/config.yaml
+
+  oai-udr:
+    image: oaisoftwarealliance/oai-udr:develop
+    container_name: oai-udr
+    depends_on: 
+      mysql:
+        condition: service_healthy
+      oai-nrf:
+        condition: service_started
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.136
+    environment:
+      - REGISTER_NRF=yes
+      - TZ=Europe/Paris
+    volumes:
+      - ./conf/config.yaml:/openair-udr/etc/config.yaml
+
+  oai-udm:
+    image: oaisoftwarealliance/oai-udm:develop
+    container_name: oai-udm
+    depends_on: 
+      - oai-udr
+      - oai-nrf
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.137
+    environment:
+      - REGISTER_NRF=yes
+      - TZ=Europe/Paris
+    volumes:
+      - ./conf/config.yaml:/openair-udm/etc/config.yaml
+
+  oai-ausf:
+    image: oaisoftwarealliance/oai-ausf:develop
+    container_name: oai-ausf
+    depends_on: 
+      - oai-udm
+      - oai-nrf
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.138
+    environment:
+      - REGISTER_NRF=yes
+      - TZ=Europe/Paris
+    volumes:
+      - ./conf/config.yaml:/openair-ausf/etc/config.yaml
+
+  oai-amf:
+    image: oaisoftwarealliance/oai-amf:develop
+    container_name: oai-amf
+    depends_on: 
+      - oai-nrf
+      - oai-ausf
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.132
+    environment:
+      - REGISTER_NRF=yes
+      - TZ=Europe/Paris
+    volumes:
+      - ./conf/config.yaml:/openair-amf/etc/config.yaml
+
+  oai-smf:
+    image: oaisoftwarealliance/oai-smf:develop
+    container_name: oai-smf
+    depends_on: 
+      - oai-nrf
+      - oai-amf
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.133
+    environment:
+      - REGISTER_NRF=yes
+      - TZ=Europe/Paris
+    volumes:
+      - ./conf/config.yaml:/openair-smf/etc/config.yaml
+
+  oai-upf:
+    image: oaisoftwarealliance/oai-upf:develop
+    container_name: oai-upf
+    depends_on: 
+      - oai-smf
+    cap_add: 
+      - NET_ADMIN
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.134
+    environment:
+      - REGISTER_NRF=yes
+      - TZ=Europe/Paris
+      - NETWORK_UE_NAT_OPTION=yes
+    volumes:
+      - ./conf/config.yaml:/openair-upf/etc/config.yaml
+
+  # iperf3 server for throughput testing
+  iperf-server:
+    image: networkstatic/iperf3
+    container_name: iperf-server
+    command: -s
+    networks:
+      oai-network:
+        ipv4_address: 192.168.70.150
+    ports:
+      - "5201:5201"
+
+volumes:
+  mysql-data:
+
