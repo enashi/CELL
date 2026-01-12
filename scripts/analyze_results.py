@@ -399,10 +399,6 @@ def main():
     print("=" * 70)
     print("\nGenerated files:")
     print("  - report.txt (text report)")
-    print("\nNext steps:")
-    print("  1. View report: cat report.txt")
-    print("  2. Use statistics in your thesis")
-    print("  3. Create graphs manually if needed")
     
     return 0
 

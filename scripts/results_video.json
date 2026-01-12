@@ -7,23 +7,23 @@
     "duration": 60,
     "method": "iperf3"
   },
-  "timestamp": 1768165296.525768,
-  "timestamp_readable": "2026-01-11 22:01:36",
+  "timestamp": 1768227545.3199842,
+  "timestamp_readable": "2026-01-12 15:19:05",
   "results": {
-    "throughput_mbps": 4.999781386222678,
+    "throughput_mbps": 5.000033033283783,
     "bitrate_target_mbps": 5.0,
-    "throughput_ratio": 0.9999562772445356,
-    "packets_sent": 25897,
+    "throughput_ratio": 1.0000066066567566,
+    "packets_sent": 25898,
     "packets_lost": 0,
     "loss_percent": 0,
-    "jitter_ms": 0.17231814512332022,
+    "jitter_ms": 0.03842000388113312,
     "duration": 60
   },
   "threshold": 0.95,
   "scores": {
-    "throughput": 99.99562772445356,
+    "throughput": 100,
     "loss": 100,
-    "overall": 99.99781386222678
+    "overall": 100.0
   },
   "passed": true
 }

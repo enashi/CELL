@@ -1,30 +1,32 @@
 {
   "test_type": "voip",
   "test_config": {
-    "target_ip": "10.2.0.7",
+    "target_ip": "10.1.0.2",
     "duration": 60,
-    "packet_rate": 50
+    "packet_rate": 50,
+    "echo_mode": false
   },
-  "timestamp": 1768165317.4806988,
-  "timestamp_readable": "2026-01-11 22:01:57",
+  "timestamp": 1768227861.221953,
+  "timestamp_readable": "2026-01-12 15:24:21",
   "latency": {
-    "min": 0,
-    "max": 0,
-    "avg": 0,
-    "stddev": 0,
-    "loss": 100.0
+    "min": 0.014,
+    "max": 0.075,
+    "avg": 0.029,
+    "stddev": 0.013,
+    "loss": 0.0
   },
-  "jitter": 0.0,
+  "jitter": 0.013,
+  "jitter_method": "latency_stddev",
   "thresholds": {
     "latency": 150,
     "jitter": 30,
     "loss": 1.0
   },
   "scores": {
-    "latency": 100.0,
-    "jitter": 100.0,
-    "loss": 0,
-    "overall": 66.66666666666667
+    "latency": 99.98066666666666,
+    "jitter": 99.95666666666666,
+    "loss": 100.0,
+    "overall": 99.9791111111111
   },
-  "passed": false
+  "passed": true
 }

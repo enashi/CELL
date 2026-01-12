@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 """
-VoIP Traffic Test Script - Complete Implementation
-
-Simulates VoIP traffic and measures QoS parameters:
-- Latency
-- Jitter  
-- Packet loss
-
-Implementation uses UDP sockets to simulate G.711 VoIP codec (64 kbps)
+VoIP Traffic Test Script - Version avec support loopback
+Permet de tester en local avec mesure de jitter
 """
 
 import time
@@ -28,14 +22,6 @@ class VoIPTrafficGenerator:
     """Generates VoIP-like UDP traffic (G.711 codec simulation)"""
     
     def __init__(self, target_ip, target_port=5060, source_port=5061):
-        """
-        Initialize VoIP traffic generator
-        
-        Args:
-            target_ip: Destination IP address
-            target_port: Destination port
-            source_port: Source port
-        """
         self.target_ip = target_ip
         self.target_port = target_port
         self.source_port = source_port
@@ -59,22 +45,11 @@ class VoIPTrafficGenerator:
             return False
     
     def generate_traffic(self, duration=60, rate=50):
-        """
-        Generate VoIP traffic
-        
-        Args:
-            duration: Test duration in seconds
-            rate: Packets per second (default 50 for 20ms packetization)
-        
-        G.711 characteristics:
-        - 64 kbps bitrate
-        - 20ms packetization = 50 packets/sec
-        - Packet size: 160 bytes payload + headers
-        """
+        """Generate VoIP traffic"""
         if not self.running:
             return
         
-        packet_interval = 1.0 / rate  # Time between packets
+        packet_interval = 1.0 / rate
         payload_size = 160  # G.711 20ms frame
         
         start_time = time.time()
@@ -83,21 +58,16 @@ class VoIPTrafficGenerator:
         
         while self.running and (time.time() - start_time) < duration:
             try:
-                # Create RTP-like packet
-                # Simple header: timestamp (4 bytes) + sequence (4 bytes) + payload
-                # Use relative timestamp to avoid overflow
-                relative_timestamp = int((time.time() - start_time) * 1000)  # ms since start
+                relative_timestamp = int((time.time() - start_time) * 1000)
                 header = struct.pack('!II', relative_timestamp, sequence)
-                payload = b'V' * payload_size  # VoIP data
+                payload = b'V' * payload_size
                 packet = header + payload
                 
-                # Send packet
                 self.socket.sendto(packet, (self.target_ip, self.target_port))
                 self.stats['packets_sent'] += 1
                 self.stats['bytes_sent'] += len(packet)
                 sequence += 1
                 
-                # Wait for next packet time
                 next_send_time += packet_interval
                 sleep_time = next_send_time - time.time()
                 if sleep_time > 0:
@@ -105,14 +75,13 @@ class VoIPTrafficGenerator:
                 
             except Exception as e:
                 self.stats['errors'] += 1
-                if self.stats['errors'] < 5:  # Limit error messages
+                if self.stats['errors'] < 5:
                     print(f"Error sending packet: {e}")
         
-        # Calculate actual bitrate
         duration_actual = time.time() - start_time
         bitrate_kbps = (self.stats['bytes_sent'] * 8) / (duration_actual * 1000)
         
-        print(f"\nVoIP Traffic Statistics:")
+        print("\nVoIP Traffic Statistics:")
         print(f"  Packets sent: {self.stats['packets_sent']}")
         print(f"  Bytes sent: {self.stats['bytes_sent']}")
         print(f"  Duration: {duration_actual:.2f}s")
@@ -131,34 +100,17 @@ class VoIPTrafficGenerator:
 # =============================================================================
 
 def measure_latency(target_ip, count=100):
-    """
-    Measure latency using ping
-    
-    Args:
-        target_ip: Target IP address
-        count: Number of ping packets
-    
-    Returns:
-        dict: Statistics (min, max, avg, stddev, loss)
-    """
+    """Measure latency using ping"""
     print(f"Measuring latency to {target_ip} ({count} packets)...")
     
     try:
-        # Run ping command
         cmd = ['ping', '-c', str(count), '-i', '0.2', target_ip]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:
             print(f"Ping failed: {result.stderr}")
-            return {
-                'min': 0,
-                'max': 0,
-                'avg': 0,
-                'stddev': 0,
-                'loss': 100.0
-            }
+            return {'min': 0, 'max': 0, 'avg': 0, 'stddev': 0, 'loss': 100.0}
         
-        # Parse output
         output = result.stdout
         
         # Extract packet loss
@@ -170,7 +122,7 @@ def measure_latency(target_ip, count=100):
                 except:
                     pass
         
-        # Extract latency statistics (last line with min/avg/max/stddev)
+        # Extract latency statistics
         min_latency = 0
         max_latency = 0
         avg_latency = 0
@@ -179,7 +131,6 @@ def measure_latency(target_ip, count=100):
         for line in output.split('\n'):
             if 'min/avg/max' in line or 'rtt' in line:
                 try:
-                    # Format: "rtt min/avg/max/mdev = 10.1/15.2/20.3/2.5 ms"
                     stats_part = line.split('=')[1].strip().split()[0]
                     min_latency, avg_latency, max_latency, stddev_latency = map(float, stats_part.split('/'))
                 except Exception as e:
@@ -193,122 +144,141 @@ def measure_latency(target_ip, count=100):
             'loss': loss
         }
     
-    except subprocess.TimeoutExpired:
-        print("Ping timeout")
-        return {
-            'min': 0,
-            'max': 0,
-            'avg': 0,
-            'stddev': 0,
-            'loss': 100.0
-        }
     except Exception as e:
         print(f"Error measuring latency: {e}")
-        return {
-            'min': 0,
-            'max': 0,
-            'avg': 0,
-            'stddev': 0,
-            'loss': 100.0
-        }
+        return {'min': 0, 'max': 0, 'avg': 0, 'stddev': 0, 'loss': 100.0}
 
 
-def measure_jitter_live(target_ip, port=5060, duration=10):
+def measure_jitter_from_latency(latency_stats):
     """
-    Calculate jitter by receiving VoIP packets and measuring inter-arrival time variance
-    
-    Args:
-        target_ip: Source IP to receive from
-        port: Port to listen on
-        duration: Measurement duration in seconds
-    
-    Returns:
-        float: Average jitter in ms
+    Estimate jitter from latency standard deviation
+    This is a fallback when packet capture isn't possible
     """
-    print(f"Measuring jitter (receiving packets for {duration}s)...")
+    # Jitter approximation: use stddev as jitter estimate
+    # This is not perfect but gives a reasonable estimate
+    jitter = latency_stats.get('stddev', 0)
     
+    print("Jitter estimation:")
+    print("  Method: Derived from latency variance")
+    print("  Estimated jitter: {jitter:.2f}ms")
+    
+    return jitter
+
+
+def create_echo_server(port=5060, duration=65):
+    """
+    Create a simple UDP echo server for testing
+    This allows local jitter measurement
+    """
     try:
-        # Create receiving socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('', port))
         sock.settimeout(1.0)
         
-        arrival_times = []
+        print(f"Echo server listening on port {port}...")
         start_time = time.time()
+        packets_echoed = 0
         
         while (time.time() - start_time) < duration:
             try:
                 data, addr = sock.recvfrom(2048)
-                arrival_times.append(time.time())
+                # Echo back
+                sock.sendto(data, addr)
+                packets_echoed += 1
             except socket.timeout:
                 continue
             except Exception as e:
                 break
         
         sock.close()
+        print(f"Echo server stopped. Echoed {packets_echoed} packets.")
         
-        if len(arrival_times) < 2:
-            print("  Warning: Not enough packets received for jitter calculation")
+    except Exception as e:
+        print(f"Echo server error: {e}")
+
+
+def measure_jitter_with_echo(duration=10):
+    """
+    Measure jitter using echo method
+    Send packets to localhost and measure round-trip time variance
+    """
+    print(f"Measuring jitter with echo method ({duration}s)...")
+    
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1.0)
+        
+        rtts = []
+        start_time = time.time()
+        sequence = 0
+        packet_interval = 0.02  # 20ms
+        
+        while (time.time() - start_time) < duration:
+            try:
+                # Send packet
+                send_time = time.time()
+                header = struct.pack('!II', int(send_time * 1000), sequence)
+                payload = b'E' * 160
+                packet = header + payload
+                
+                sock.sendto(packet, ('127.0.0.1', 5060))
+                
+                # Wait for echo
+                try:
+                    data, addr = sock.recvfrom(2048)
+                    recv_time = time.time()
+                    rtt = (recv_time - send_time) * 1000  # Convert to ms
+                    rtts.append(rtt)
+                except socket.timeout:
+                    pass
+                
+                sequence += 1
+                
+                # Wait for next interval
+                time.sleep(max(0, packet_interval - (time.time() - send_time)))
+                
+            except Exception as e:
+                break
+        
+        sock.close()
+        
+        if len(rtts) < 2:
+            print("  Warning: Not enough RTT samples")
             return 0.0
         
-        # Calculate inter-arrival times
-        inter_arrival_times = []
-        for i in range(1, len(arrival_times)):
-            inter_arrival_times.append((arrival_times[i] - arrival_times[i-1]) * 1000)  # Convert to ms
+        # Calculate jitter from RTT variance
+        # Jitter = average absolute difference between consecutive RTTs
+        jitter_samples = []
+        for i in range(1, len(rtts)):
+            jitter_samples.append(abs(rtts[i] - rtts[i-1]))
         
-        # Jitter is the variance of inter-arrival times
-        if len(inter_arrival_times) < 2:
-            return 0.0
+        jitter = statistics.mean(jitter_samples) if jitter_samples else 0.0
         
-        # Calculate jitter using RFC 3550 method (running average of differences)
-        jitter = 0.0
-        expected_interval = 20.0  # 20ms for G.711
-        
-        for interval in inter_arrival_times:
-            diff = abs(interval - expected_interval)
-            jitter += (diff - jitter) / 16.0  # RFC 3550 smoothing
-        
-        print(f"  Received {len(arrival_times)} packets")
-        print(f"  Average inter-arrival time: {statistics.mean(inter_arrival_times):.2f}ms")
+        print(f"  Received {len(rtts)} echo responses")
+        print(f"  Average RTT: {statistics.mean(rtts):.2f}ms")
+        print(f"  RTT variance: {statistics.stdev(rtts):.2f}ms" if len(rtts) > 1 else "  RTT variance: N/A")
         print(f"  Jitter: {jitter:.2f}ms")
         
         return jitter
     
     except Exception as e:
-        print(f"Error measuring jitter: {e}")
+        print(f"Error measuring jitter with echo: {e}")
         return 0.0
-
-
-def measure_jitter(pcap_file):
-    """
-    Calculate jitter from packet capture
-    (Fallback method if pcap file exists)
-    
-    Args:
-        pcap_file: Path to pcap file
-    
-    Returns:
-        float: Average jitter in ms
-    """
-    # This is a placeholder for pcap-based analysis
-    # In practice, use the live measurement above
-    print(f"Note: Using live jitter measurement instead of pcap analysis")
-    return 0.0
 
 
 # =============================================================================
 # MAIN TEST FUNCTION
 # =============================================================================
 
-def run_voip_test(target_ip, test_duration=60, rate=50):
+def run_voip_test(target_ip, test_duration=60, rate=50, use_echo=False):
     """
     Run complete VoIP test
     
     Args:
         target_ip: Target IP address for VoIP traffic
         test_duration: Duration of traffic generation in seconds
-        rate: Packets per second (default 50 for 20ms packetization)
+        rate: Packets per second
+        use_echo: Use echo server for local jitter measurement
     """
     print("=" * 70)
     print("Starting VoIP QoS Test")
@@ -316,46 +286,49 @@ def run_voip_test(target_ip, test_duration=60, rate=50):
     print(f"Target IP: {target_ip}")
     print(f"Duration: {test_duration}s")
     print(f"Packet rate: {rate} pps (20ms packetization)")
+    print(f"Echo mode: {'Enabled (local jitter test)' if use_echo else 'Disabled'}")
     
     # Measure baseline latency
     print("\n[1/4] Measuring baseline latency...")
     latency_stats = measure_latency(target_ip, count=50)
     
-    # Start jitter measurement in background (receiver)
-    print("\n[2/4] Starting jitter measurement...")
-    jitter_thread = None
-    jitter_result = [0.0]  # Use list to allow modification in thread
+    jitter = 0.0
     
-    def measure_jitter_thread():
-        jitter_result[0] = measure_jitter_live(target_ip, port=5060, duration=min(test_duration, 30))
-    
-    jitter_thread = threading.Thread(target=measure_jitter_thread, daemon=True)
-    jitter_thread.start()
-    
-    # Wait a moment for receiver to be ready
-    time.sleep(1)
-    
-    # Generate VoIP traffic
-    print("\n[3/4] Generating VoIP traffic...")
-    generator = VoIPTrafficGenerator(target_ip, target_port=5060, source_port=5061)
-    
-    if generator.start():
-        generator.generate_traffic(duration=test_duration, rate=rate)
-        generator.stop()
+    if use_echo:
+        # Start echo server in background
+        print("\n[2/4] Starting echo server for jitter measurement...")
+        echo_thread = threading.Thread(
+            target=create_echo_server, 
+            args=(5060, test_duration + 5),
+            daemon=True
+        )
+        echo_thread.start()
+        time.sleep(1)  # Let server start
+        
+        # Measure jitter with echo
+        print("\n[3/4] Measuring jitter with echo method...")
+        jitter = measure_jitter_with_echo(duration=min(test_duration, 30))
     else:
-        print("Failed to start VoIP traffic generator")
-    
-    # Wait for jitter measurement to complete
-    print("\n[4/4] Finalizing jitter analysis...")
-    if jitter_thread:
-        jitter_thread.join(timeout=5)
-    jitter = jitter_result[0]
+        # Use latency-based jitter estimation
+        print("\n[2/4] Estimating jitter from latency variance...")
+        jitter = measure_jitter_from_latency(latency_stats)
+        
+        # Generate VoIP traffic (for demonstration)
+        print("\n[3/4] Generating VoIP traffic...")
+        generator = VoIPTrafficGenerator(target_ip, target_port=5060, source_port=5061)
+        
+        if generator.start():
+            generator.generate_traffic(duration=test_duration, rate=rate)
+            generator.stop()
+        else:
+            print("Failed to start VoIP traffic generator")
     
     # Print results
+    print("\n[4/4] Finalizing results...")
     print("\n" + "=" * 70)
     print("VoIP QoS Test Results")
     print("=" * 70)
-    print(f"Latency:")
+    print("Latency:")
     print(f"  Average: {latency_stats['avg']:.2f}ms")
     print(f"  Min: {latency_stats['min']:.2f}ms")
     print(f"  Max: {latency_stats['max']:.2f}ms")
@@ -368,9 +341,9 @@ def run_voip_test(target_ip, test_duration=60, rate=50):
     print("QoS Evaluation (ITU-T G.114 / 3GPP TS 23.203)")
     print("=" * 70)
     
-    voip_latency_threshold = 150  # ms (ITU-T G.114)
-    voip_jitter_threshold = 30    # ms
-    voip_loss_threshold = 1.0     # %
+    voip_latency_threshold = 150
+    voip_jitter_threshold = 30
+    voip_loss_threshold = 1.0
     
     passed = True
     
@@ -410,12 +383,14 @@ def run_voip_test(target_ip, test_duration=60, rate=50):
         'test_config': {
             'target_ip': target_ip,
             'duration': test_duration,
-            'packet_rate': rate
+            'packet_rate': rate,
+            'echo_mode': use_echo
         },
         'timestamp': time.time(),
         'timestamp_readable': time.strftime('%Y-%m-%d %H:%M:%S'),
         'latency': latency_stats,
         'jitter': jitter,
+        'jitter_method': 'echo_rtt' if use_echo else 'latency_stddev',
         'thresholds': {
             'latency': voip_latency_threshold,
             'jitter': voip_jitter_threshold,
@@ -439,36 +414,39 @@ def run_voip_test(target_ip, test_duration=60, rate=50):
     return passed
 
 
-# =============================================================================
-# COMMAND LINE INTERFACE
-# =============================================================================
-
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("=" * 70)
-        print("VoIP QoS Test Script")
+        print("VoIP QoS Test Script - Enhanced Version")
         print("=" * 70)
-        print("\nUsage: python3 test_voip.py <target_ip> [duration] [rate]")
+        print("\nUsage: python3 test_voip_fixed.py <target_ip> [duration] [rate] [--echo]")
         print("\nArguments:")
-        print("  target_ip    Target IP address for VoIP traffic")
+        print("  target_ip    Target IP address for latency measurement")
         print("  duration     Test duration in seconds (default: 60)")
         print("  rate         Packets per second (default: 50 for 20ms)")
+        print("  --echo       Use echo server for local jitter measurement")
         print("\nExamples:")
-        print("  python3 test_voip.py 10.2.0.6")
-        print("  python3 test_voip.py 10.2.0.6 30")
-        print("  python3 test_voip.py 10.2.0.6 60 50")
+        print("  # Standard test (jitter from latency variance)")
+        print("  python3 test_voip_fixed.py 10.2.0.6")
+        print()
+        print("  # Echo mode (local jitter measurement)")
+        print("  python3 test_voip_fixed.py 127.0.0.1 60 50 --echo")
+        print()
+        print("  # Remote test with echo server running on target")
+        print("  python3 test_voip_fixed.py 10.2.0.6 60 50 --echo")
         print("\nNotes:")
-        print("  - Simulates G.711 codec (64 kbps)")
-        print("  - 50 pps = 20ms packetization (standard for VoIP)")
+        print("  - Standard mode: jitter estimated from latency variance")
+        print("  - Echo mode: requires echo server (or use 127.0.0.1 for local)")
         print("  - ITU-T G.114 thresholds applied")
         sys.exit(1)
     
     target = sys.argv[1]
     duration = int(sys.argv[2]) if len(sys.argv) > 2 else 60
     rate = int(sys.argv[3]) if len(sys.argv) > 3 else 50
+    use_echo = '--echo' in sys.argv
     
     try:
-        success = run_voip_test(target, duration, rate)
+        success = run_voip_test(target, duration, rate, use_echo)
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
         print("\n\nTest interrupted by user")

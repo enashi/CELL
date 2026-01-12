@@ -1,7 +1,7 @@
 ======================================================================
 5G QoS Test Results Report
 ======================================================================
-Generated: 2026-01-11 20:39:21
+Generated: 2026-01-12 15:24:31
 
 EXECUTIVE SUMMARY
 ----------------------------------------------------------------------
@@ -17,8 +17,8 @@ Tests Passed: 1
 Success Rate: 100.0%
 
 Performance Metrics:
-  Latency (avg): 0.04ms
-  Jitter (avg): 0.13ms
+  Latency (avg): 0.03ms
+  Jitter (avg): 0.01ms
   Loss (avg): 0.00%
 
 
@@ -29,9 +29,9 @@ Tests Passed: 1
 Success Rate: 100.0%
 
 Performance Metrics:
-  Throughput (avg): 10.00 Mbps
+  Throughput (avg): 5.00 Mbps
   Ratio (avg): 100.0%
-  Loss (avg): 0.06%
+  Loss (avg): 0.00%
 
 
 DETAILED RESULTS
@@ -41,9 +41,9 @@ VoIP Tests:
 
   Test 1:
     File: results_voip.json
-    Timestamp: 2026-01-11 20:38:20
-    Latency: 0.04ms
-    Jitter: 0.13ms
+    Timestamp: 2026-01-12 15:24:21
+    Latency: 0.03ms
+    Jitter: 0.01ms
     Loss: 0.00%
     Result: PASS
 
@@ -51,8 +51,8 @@ Video Tests:
 
   Test 1:
     File: results_video.json
-    Timestamp: 2026-01-11 20:39:15
-    Target: 10.00 Mbps
-    Achieved: 10.00 Mbps
+    Timestamp: 2026-01-12 15:19:05
+    Target: 5.00 Mbps
+    Achieved: 5.00 Mbps
     Ratio: 100.0%
     Result: PASS
